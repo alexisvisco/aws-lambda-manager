@@ -5,7 +5,6 @@ import (
 	"aws-test/pkg/util"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/cobra"
 	"os"
@@ -39,7 +38,7 @@ func deploy(_ *cobra.Command, args []string) error {
 	var (
 		sum, s3key string
 		file       *os.File
-		fun        *lambda.FunctionConfiguration
+		link       *string
 		err        error
 	)
 
@@ -90,21 +89,24 @@ func deploy(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		if err := util.Action(fmt.Sprintf("Creating your lambda"), func() error {
-			fun, err = amazon.LambdaCreate(SessionAWS, resourceName, s3key)
+			link, err = amazon.LambdaCreate(SessionAWS, resourceName, s3key)
 			return err
 		}); err != nil {
 			return err
 		}
 	}
 
-	fmt.Println("Lambda id : ", lambdaCtx.id)
+	fmt.Println("Lambda id   ", lambdaCtx.id)
+	if link != nil {
+		fmt.Println("Lambda link ", *link)
+	}
 
 	return nil
 }
 
 var flagRollbackTime string
 
-func rollback(cmd *cobra.Command, args []string) error {
+func rollback(_ *cobra.Command, args []string) error {
 	resourceName := fmt.Sprintf("%s-%s", args[0], args[1])
 	output, err := amazon.S3ListObjects(SessionAWS, resourceName)
 	if err != nil {

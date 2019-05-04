@@ -24,7 +24,7 @@ func show(_ events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, erro
 
 	// Fetch the book record from the database based on the isbn value.
 	bk := book{
-		ISBN:   "lol",
+		ISBN:   "ultra-cool",
 		Title:  "MDRRRRR !",
 		Author: "Alexis",
 	}

@@ -117,7 +117,9 @@ func LambdaGetAll(sess *session.Session, all bool) ([]*lambda.FunctionConfigurat
 	return list, nil
 }
 
-func LambdaCreate(sess *session.Session, name, s3Key string) (cfg *lambda.FunctionConfiguration, err error) {
+func LambdaCreate(sess *session.Session, name, s3Key string) (link *string, err error) {
+	var cfg *lambda.FunctionConfiguration
+
 	output, _ := iam.New(sess).GetUser(&iam.GetUserInput{})
 	accountId := strings.Split(*output.User.Arn, ":")[4]
 
@@ -267,7 +269,8 @@ func LambdaCreate(sess *session.Session, name, s3Key string) (cfg *lambda.Functi
 		return nil, errx
 	}
 
-	return cfg, err
+	lambdaLink := fmt.Sprintf("https://%s.execute-api.%s.amazonaws.com/default/%s", *api.Id, *sess.Config.Region, name)
+	return &lambdaLink, err
 }
 
 func LambdaUpdateCode(sess *session.Session, name, s3Key string) (*lambda.FunctionConfiguration, error) {
