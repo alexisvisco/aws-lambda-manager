@@ -34,6 +34,15 @@ func S3CreateBucket(sess *session.Session, bucketName string) error {
 	return err
 }
 
+func S3DeleteBucket(sess *session.Session, bucketName string) error {
+	s := s3.New(sess)
+
+	_, err := s.DeleteBucket(&s3.DeleteBucketInput{
+		Bucket: aws.String(bucketName),
+	})
+	return err
+}
+
 func S3ListObjects(sess *session.Session, bucketName string) (*s3.ListObjectsOutput, error) {
 	s := s3.New(sess)
 	return s.ListObjects(&s3.ListObjectsInput{
@@ -283,23 +292,35 @@ func LambdaUpdateCode(sess *session.Session, name, s3Key string) (*lambda.Functi
 	})
 }
 
-func LambdaDelete(sess *session.Session, name string) {
-	_, _ = iam.New(sess).DeleteRole(&iam.DeleteRoleInput{
+func LambdaDelete(sess *session.Session, name string) error {
+	_, err := iam.New(sess).DeleteRole(&iam.DeleteRoleInput{
 		RoleName: aws.String(name),
 	})
-	_, _ = lambda.New(sess).DeleteFunction(&lambda.DeleteFunctionInput{
+	if err != nil {
+		return err
+	}
+	_, err = lambda.New(sess).DeleteFunction(&lambda.DeleteFunctionInput{
 		FunctionName: aws.String(name),
 	})
+	if err != nil {
+		return err
+	}
 
 	gateway := apigateway.New(sess)
 	l, err := gateway.GetRestApis(&apigateway.GetRestApisInput{})
 	if err == nil {
 		for _, i := range l.Items {
 			if *i.Name == fmt.Sprintf("%s-API", name) {
-				_, _ = gateway.DeleteRestApi(&apigateway.DeleteRestApiInput{
+				_, err = gateway.DeleteRestApi(&apigateway.DeleteRestApiInput{
 					RestApiId: i.Id,
 				})
+				if err != nil {
+					return err
+				}
 			}
 		}
+	} else {
+		return err
 	}
+	return nil
 }

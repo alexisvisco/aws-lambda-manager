@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 )
 
@@ -159,7 +160,15 @@ func rollback(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+var flagRemoveStorage bool
+
 func remove(cmd *cobra.Command, args []string) error {
+	if err := amazon.LambdaDelete(SessionAWS, fmt.Sprintf("%s-%s", args[0], args[1])); err != nil {
+		return err
+	}
+	if flagRemoveStorage {
+		return amazon.S3DeleteBucket(SessionAWS, fmt.Sprintf("%s-%s", args[0], args[1]))
+	}
 	return nil
 }
 
@@ -171,6 +180,9 @@ func listVersions(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	tab := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
+	_, _ = fmt.Fprintf(tab, "SHA256 ID\tSIZE\tCREATED AT\t\n")
 	for _, l := range output.Contents {
 		split := strings.Split(*l.Key, "-")
 		if len(split) == 2 {
@@ -182,13 +194,15 @@ func listVersions(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			versionTime := time.Unix(i, 0)
+
 			if flagListVersionFull {
-				fmt.Printf("- time: %s	sha256: %s\n", t, sha[:len(sha)-4])
+				_, _ = fmt.Fprintf(tab, "%s\t%s\t%s\t\n", sha[:len(sha)-4], util.HumanByteSize(*l.Size), t)
 			} else {
-				fmt.Printf("- time: %s	sha256: %s\n", versionTime.Format(time.RFC822), sha[:12])
+				_, _ = fmt.Fprintf(tab, "%s\t%s\t%s\t\n", sha[:12], util.HumanByteSize(*l.Size), versionTime.Format(time.RFC822))
 			}
 		}
 	}
+	_ = tab.Flush()
 	return nil
 }
 
@@ -199,9 +213,14 @@ func list(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	tab := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
+	_, _ = fmt.Fprintf(tab, "NAME\tID\tRUNTIME\tMEMORY\tARN\t\n")
 	for _, f := range list {
-		fmt.Printf("- name: %s	runtime: %s	arn: %s\n", *f.FunctionName, *f.Runtime, *f.FunctionArn)
+		split := strings.Split(*f.FunctionName, "-")
+		name := strings.Join(split[:len(split)-1], "-")
+		_, _ = fmt.Fprintf(tab, "%s\t%s\t%s\t%s\t%s\t\n", name, split[len(split)-1], *f.Runtime, util.HumanByteSize(*f.MemorySize*1000000), *f.FunctionArn)
 	}
+	_ = tab.Flush()
 	return nil
 }
 
@@ -234,10 +253,11 @@ func init() {
 	lambdaCmdRollback.PersistentFlags().StringVarP(&flagRollbackTime, "time", "t", "", "use a time versioned sha256")
 
 	lambdaCmdDelete := &cobra.Command{
-		Use:   "lambda",
+		Use:   "delete",
 		Short: "Delete a lambda",
 		RunE:  remove,
 	}
+	lambdaCmdDelete.PersistentFlags().BoolVarP(&flagRemoveStorage, "storage", "s", true, "remove bucket where code is stored")
 
 	lambdaCmdList := &cobra.Command{
 		Use:   "list",
