@@ -20,6 +20,7 @@ type lambdaCtx struct {
 
 var flagDeployForce bool
 var flagDeployId string
+var flagDeployRuntime string
 
 func deploy(_ *cobra.Command, args []string) error {
 	name := args[0]
@@ -90,7 +91,7 @@ func deploy(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		if err := util.Action(fmt.Sprintf("Creating your lambda"), func() error {
-			link, err = amazon.LambdaCreate(SessionAWS, resourceName, s3key)
+			link, err = amazon.LambdaCreate(SessionAWS, lambdaCtx.id, flagDeployRuntime, resourceName, s3key)
 			return err
 		}); err != nil {
 			return err
@@ -162,7 +163,7 @@ func rollback(_ *cobra.Command, args []string) error {
 
 var flagRemoveStorage bool
 
-func remove(cmd *cobra.Command, args []string) error {
+func remove(_ *cobra.Command, args []string) error {
 	if err := amazon.LambdaDelete(SessionAWS, fmt.Sprintf("%s-%s", args[0], args[1])); err != nil {
 		return err
 	}
@@ -174,7 +175,7 @@ func remove(cmd *cobra.Command, args []string) error {
 
 var flagListVersionFull bool
 
-func listVersions(cmd *cobra.Command, args []string) error {
+func listVersions(_ *cobra.Command, args []string) error {
 	resourceName := fmt.Sprintf("%s-%s", args[0], args[1])
 	output, err := amazon.S3ListObjects(SessionAWS, resourceName)
 	if err != nil {
@@ -243,6 +244,7 @@ func init() {
 	}
 	lambdaCmdDeploy.PersistentFlags().BoolVarP(&flagDeployForce, "force", "f", false, "force deployment if code already exist")
 	lambdaCmdDeploy.PersistentFlags().StringVar(&flagDeployId, "id", "", "set the id of the lambda, if none a new lambda will be created")
+	lambdaCmdDeploy.PersistentFlags().StringVarP(&flagDeployRuntime, "runtime", "r", "go1.x", "set the runtime (the programming language) of the function")
 
 	lambdaCmdRollback := &cobra.Command{
 		Use:   "rollback <name> <id> <sha256 version>",
@@ -255,6 +257,7 @@ func init() {
 	lambdaCmdDelete := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete a lambda",
+		Args:  cobra.ExactArgs(2),
 		RunE:  remove,
 	}
 	lambdaCmdDelete.PersistentFlags().BoolVarP(&flagRemoveStorage, "storage", "s", true, "remove bucket where code is stored")

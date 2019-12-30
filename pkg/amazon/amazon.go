@@ -37,6 +37,14 @@ func S3CreateBucket(sess *session.Session, bucketName string) error {
 func S3DeleteBucket(sess *session.Session, bucketName string) error {
 	s := s3.New(sess)
 
+	iter := s3manager.NewDeleteListIterator(s, &s3.ListObjectsInput{
+		Bucket: aws.String(bucketName),
+	})
+
+	if err := s3manager.NewBatchDeleteWithClient(s).Delete(aws.BackgroundContext(), iter); err != nil {
+		return err
+	}
+
 	_, err := s.DeleteBucket(&s3.DeleteBucketInput{
 		Bucket: aws.String(bucketName),
 	})
@@ -101,16 +109,18 @@ func LambdaGet(sess *session.Session, name string) *lambda.GetFunctionOutput {
 	}
 }
 
-func LambdaGetAll(sess *session.Session, all bool) ([]*lambda.FunctionConfiguration, error) {
+type Function struct {
+	*lambda.FunctionConfiguration
+	Tags map[string]*string
+}
+
+func LambdaGetAll(sess *session.Session, all bool) ([]Function, error) {
 	l := lambda.New(sess)
 	la, err := l.ListFunctions(&lambda.ListFunctionsInput{})
 	if err != nil {
 		return nil, err
 	}
-	if all {
-		return la.Functions, nil
-	}
-	var list []*lambda.FunctionConfiguration
+	var list []Function
 	for _, lam := range la.Functions {
 		output, err := l.ListTags(&lambda.ListTagsInput{
 			Resource: lam.FunctionArn,
@@ -118,15 +128,19 @@ func LambdaGetAll(sess *session.Session, all bool) ([]*lambda.FunctionConfigurat
 		if err != nil {
 			return nil, err
 		}
+		if all {
+			list = append(list, Function{lam, output.Tags})
+			continue
+		}
 		i, ok := output.Tags["manager"]
 		if ok && *i == "expected.sh" {
-			list = append(list, lam)
+			list = append(list, Function{lam, output.Tags})
 		}
 	}
 	return list, nil
 }
 
-func LambdaCreate(sess *session.Session, name, s3Key string) (link *string, err error) {
+func LambdaCreate(sess *session.Session, id, runtime, name, s3Key string) (link *string, err error) {
 	var cfg *lambda.FunctionConfiguration
 
 	output, _ := iam.New(sess).GetUser(&iam.GetUserInput{})
@@ -156,9 +170,11 @@ func LambdaCreate(sess *session.Session, name, s3Key string) (link *string, err 
 			Handler:      aws.String("main"),
 			MemorySize:   aws.Int64(256),
 			Publish:      aws.Bool(true),
-			Runtime:      aws.String("go1.x"),
+			Runtime:      aws.String(runtime),
 			Tags: map[string]*string{
 				"manager": aws.String("expected.sh"),
+				"created": aws.String(fmt.Sprintf("%d", time.Now().Unix())),
+				"id":      aws.String(id),
 			},
 			Timeout: aws.Int64(15),
 		})
