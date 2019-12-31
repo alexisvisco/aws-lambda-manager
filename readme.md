@@ -6,7 +6,7 @@ export AWS_SECRET_ACCESS_KEY=?
 ```
 
 ```
-cd repo-test && GOOS=linux GOARCH=amd64 go build -o main main.go && cd -
+GOOS=linux GOARCH=amd64 go build ./example/main.go && cp main example 
 go run cmd/cli/main.go lambda deploy repo-test repo-test
 ```
 

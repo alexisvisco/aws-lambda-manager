@@ -6,13 +6,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var FlagRegion string
-var SessionAWS *session.Session
+type lambdaCtx struct {
+	folder, name, id string
+}
 
-var RootCmd = &cobra.Command{
-	Use:          "expected",
-	Short:        "Expected cli is the fastest and efficient way to deploy on aws, gc ...",
-	Long:         `Deploy on amazon, google cloud, azure in a way that is absolutely simple and efficient for you.`,
+// flRegion is the region to use
+var flRegion string
+
+// awsSession is the aws session used
+var awsSession *session.Session
+
+var Root = &cobra.Command{
+	Use:   "awsl",
+	Short: "awls cli is the fastest and efficient way to deploy on aws",
+	Long: `Deploy on amazon in a way that is absolutely simple and efficient for you.
+Included: 
+ - Versions: using digest
+ - Efficient storage: using s3 and zip your lambda
+ - AWS Gateway setup`,
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := cmd.Help(); err != nil {
@@ -22,13 +33,13 @@ var RootCmd = &cobra.Command{
 }
 
 func init() {
-	RootCmd.PersistentFlags().StringVar(&FlagRegion, "region", "eu-west-3", "region to use")
+	Root.PersistentFlags().StringVar(&flRegion, "region", "eu-west-3", "region to use")
 
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(FlagRegion),
+		Region: aws.String(flRegion),
 	})
 	if err != nil {
 		return
 	}
-	SessionAWS = sess
+	awsSession = sess
 }

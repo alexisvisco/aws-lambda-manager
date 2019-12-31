@@ -15,11 +15,11 @@ func CreateZip(dir string) (string, *os.File, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	file, err := os.Create(os.TempDir() + "/" + "expected-" + sum + ".zip")
+	file, err := os.Create(os.TempDir() + "/" + "awsl-" + sum + ".zip")
 	if err != nil {
 		return "", nil, err
 	}
-	err = Zip("repo-test", file)
+	err = Zip(dir, file)
 	if err != nil {
 		return "", nil, err
 	}
