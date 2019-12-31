@@ -1,37 +1,31 @@
-#### How to deploy
+### Overview 
 
-```
-export AWS_ACCESS_KEY_ID=?
-export AWS_SECRET_ACCESS_KEY=?
-```
+[![asciicast](https://asciinema.org/a/u2FoWPKvOOJzuaYuJqUx6TIlM.png)](https://asciinema.org/a/u2FoWPKvOOJzuaYuJqUx6TIlM)
 
-```
-GOOS=linux GOARCH=amd64 go build ./example/main.go && cp main example 
-go run cmd/cli/main.go lambda deploy repo-test repo-test
-```
+### Commands
 
-#### How to update with new code
+```go
+Deploy on amazon in a way that is absolutely simple and efficient for you.
+Included: 
+ - Versions: using digest
+ - Efficient storage: using s3 and zip your lambda
+ - AWS Gateway setup
 
-```
-cd repo-test && sed -i 's/lol/ultra-cool/g' main.go && GOOS=linux GOARCH=amd64 go build -o main main.go && cd - 
-go run cmd/cli/main.go lambda deploy repo-test repo-test --id $ID_GIVEN_BY_PREVIOUS_COMMAND
-```
+Usage:
+  awsl [flags]
+  awsl [command]
 
-Now we can list different versions
+Available Commands:
+  deploy       Create or update a lambda
+  help         Help about any command
+  list         List of lambdas
+  list-version List of version for a given lambda
+  remove       Remove a lambda
+  rollback     Rollback a lambda to a certain version
 
-```
-go run cmd/cli/main.go lambda list-version repo-test $ID_GIVEN_BY_PREVIOUS_COMMAND
-```
+Flags:
+  -h, --help            help for awsl
+      --region string   region to use (default "eu-west-3")
 
-Output:
-```
-- time: 04 May 19 18:02 CEST    sha256: 3b042752b0fd
-- time: 04 May 19 18:08 CEST    sha256: 483abd235caa
-```
-
-#### How to rollback
-
-In my case sha256 can be 3b042752b0fd or 3b
-```
-go run cmd/cli/main.go lambda rollback repo-test $ID_GIVEN_BY_PREVIOUS_COMMAND $SHA256
+Use "awsl [command] --help" for more information about a command.
 ```
